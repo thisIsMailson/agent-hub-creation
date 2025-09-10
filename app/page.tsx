@@ -1,16 +1,17 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, MessageSquare, Settings, Zap, ImageIcon, Code, Brain, Palette } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Plus, Search, MessageSquare, Zap, ImageIcon, Code, Brain, Palette, X, Save, Edit3 } from "lucide-react"
 import { ChatInterface } from "@/components/chat-interface"
-import { AgentManagementDialog } from "@/components/agent-management-dialog"
 
 // Mock agent data
 const initialAgents = [
@@ -75,8 +76,15 @@ export default function AgentHub() {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [agents, setAgents] = useState(initialAgents)
-  const [isManagementOpen, setIsManagementOpen] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
   const [editingAgent, setEditingAgent] = useState<string | null>(null)
+
+  const [newAgent, setNewAgent] = useState({
+    name: "",
+    description: "",
+    type: "text" as "text" | "image",
+    systemPrompt: "",
+  })
 
   const filteredAgents = agents.filter(
     (agent) =>
@@ -85,6 +93,7 @@ export default function AgentHub() {
   )
 
   const handleAgentClick = (agentId: string) => {
+    if (editingAgent === agentId) return // Don't open chat if editing
     setSelectedAgent(agentId)
     setIsChatOpen(true)
   }
@@ -95,60 +104,63 @@ export default function AgentHub() {
   }
 
   const handleCreateAgent = () => {
+    setIsCreating(true)
     setEditingAgent(null)
-    setIsManagementOpen(true)
+  }
+
+  const handleSaveNewAgent = () => {
+    if (!newAgent.name.trim() || !newAgent.description.trim()) return
+
+    const agent = {
+      ...newAgent,
+      id: Date.now().toString(),
+      status: "active" as const,
+      avatar: "",
+      lastUsed: "Never",
+      conversations: 0,
+      icon: newAgent.type === "image" ? ImageIcon : Code,
+      tools: newAgent.type === "image" ? ["image_generation"] : ["web_search"],
+    }
+
+    setAgents((prev) => [...prev, agent])
+    setNewAgent({ name: "", description: "", type: "text", systemPrompt: "" })
+    setIsCreating(false)
+  }
+
+  const handleCancelCreate = () => {
+    setNewAgent({ name: "", description: "", type: "text", systemPrompt: "" })
+    setIsCreating(false)
   }
 
   const handleEditAgent = (agentId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    setEditingAgent(agentId)
-    setIsManagementOpen(true)
-  }
-
-  const handleSaveAgent = (agentData: any) => {
-    if (editingAgent) {
-      // Update existing agent
-      setAgents((prev) => prev.map((agent) => (agent.id === editingAgent ? { ...agent, ...agentData } : agent)))
-    } else {
-      // Create new agent
-      const newAgent = {
-        ...agentData,
-        id: Date.now().toString(),
-        lastUsed: "Never",
-        conversations: 0,
-      }
-      setAgents((prev) => [...prev, newAgent])
-    }
-    setIsManagementOpen(false)
-    setEditingAgent(null)
-  }
-
-  const handleDeleteAgent = (agentId: string) => {
-    setAgents((prev) => prev.filter((agent) => agent.id !== agentId))
-    setIsManagementOpen(false)
-    setEditingAgent(null)
+    setEditingAgent(editingAgent === agentId ? null : agentId)
+    setIsCreating(false)
   }
 
   const selectedAgentData = selectedAgent ? agents.find((agent) => agent.id === selectedAgent) : null
-  const editingAgentData = editingAgent ? agents.find((agent) => agent.id === editingAgent) : null
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-6 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <header className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-40">
+        <div className="container mx-auto px-8 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 bg-accent rounded-lg">
-                <Zap className="w-6 h-6 text-accent-foreground" />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-[#24546B] to-[#1e4a5f] rounded-xl shadow-lg">
+                <Zap className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Agent Hub</h1>
-                <p className="text-sm text-muted-foreground">Manage and interact with your AI agents</p>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-[#24546B] to-[#1e4a5f] bg-clip-text text-transparent">
+                  Agent Hub
+                </h1>
+                <p className="text-slate-600 font-medium">Manage and interact with your AI agents</p>
               </div>
             </div>
-            <Button onClick={handleCreateAgent} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              <Plus className="w-4 h-4 mr-2" />
+            <Button
+              onClick={handleCreateAgent}
+              className="bg-gradient-to-r from-[#24546B] to-[#1e4a5f] hover:from-[#1e4a5f] hover:to-[#24546B] text-white shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-3"
+            >
+              <Plus className="w-5 h-5 mr-2" />
               Create Agent
             </Button>
           </div>
@@ -156,72 +168,151 @@ export default function AgentHub() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
-        {/* Search and Filters */}
+      <main className="container mx-auto px-8 py-8">
         <div className="mb-8">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
             <Input
               placeholder="Search agents..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-12 h-12 bg-white/80 backdrop-blur-sm border-slate-200 focus:border-[#24546B] focus:ring-[#24546B]/20 rounded-xl shadow-sm"
             />
           </div>
         </div>
 
-        {/* Agent Grid */}
+        {isCreating && (
+          <Card className="mb-8 bg-white/80 backdrop-blur-sm border-slate-200 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-[#24546B]">Create New Agent</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Agent Name</Label>
+                  <Input
+                    id="name"
+                    value={newAgent.name}
+                    onChange={(e) => setNewAgent((prev) => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter agent name"
+                    className="bg-white/60"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="type">Type</Label>
+                  <Select
+                    value={newAgent.type}
+                    onValueChange={(value: "text" | "image") => setNewAgent((prev) => ({ ...prev, type: value }))}
+                  >
+                    <SelectTrigger className="bg-white/60">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="text">Text Assistant</SelectItem>
+                      <SelectItem value="image">Image Generator</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  value={newAgent.description}
+                  onChange={(e) => setNewAgent((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Brief description"
+                  className="bg-white/60"
+                />
+              </div>
+              <div>
+                <Label htmlFor="systemPrompt">System Prompt</Label>
+                <Textarea
+                  id="systemPrompt"
+                  value={newAgent.systemPrompt}
+                  onChange={(e) => setNewAgent((prev) => ({ ...prev, systemPrompt: e.target.value }))}
+                  placeholder="Instructions for the agent..."
+                  className="bg-white/60 min-h-[80px]"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button onClick={handleSaveNewAgent} className="bg-[#24546B] hover:bg-[#1e4a5f]">
+                  <Save className="w-4 h-4 mr-2" />
+                  Create Agent
+                </Button>
+                <Button variant="outline" onClick={handleCancelCreate}>
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredAgents.map((agent) => {
             const IconComponent = agent.icon
+            const isEditing = editingAgent === agent.id
+
             return (
               <Card
                 key={agent.id}
-                className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-border bg-card"
-                onClick={() => handleAgentClick(agent.id)}
+                className={`transition-all duration-300 hover:shadow-xl hover:scale-[1.02] bg-white/80 backdrop-blur-sm border-slate-200 ${
+                  !isEditing ? "cursor-pointer" : ""
+                } ${isEditing ? "ring-2 ring-[#24546B]/30" : ""}`}
+                onClick={() => !isEditing && handleAgentClick(agent.id)}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <Avatar className="w-12 h-12">
+                    <Avatar className="w-14 h-14 ring-2 ring-white shadow-md">
                       <AvatarImage src={agent.avatar || "/placeholder.svg"} alt={agent.name} />
-                      <AvatarFallback className="bg-secondary">
-                        <IconComponent className="w-6 h-6 text-secondary-foreground" />
+                      <AvatarFallback className="bg-gradient-to-br from-[#24546B] to-[#1e4a5f] text-white">
+                        <IconComponent className="w-7 h-7" />
                       </AvatarFallback>
                     </Avatar>
-                    <Badge
-                      variant={agent.status === "active" ? "default" : "secondary"}
-                      className={agent.status === "active" ? "bg-accent text-accent-foreground" : ""}
-                    >
-                      {agent.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={agent.status === "active" ? "default" : "secondary"}
+                        className={
+                          agent.status === "active"
+                            ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-0"
+                            : "bg-slate-100 text-slate-600"
+                        }
+                      >
+                        {agent.status}
+                      </Badge>
+                    </div>
                   </div>
                   <div>
-                    <CardTitle className="text-lg text-card-foreground">{agent.name}</CardTitle>
-                    <CardDescription className="text-sm text-muted-foreground mt-1">
-                      {agent.description}
-                    </CardDescription>
+                    <CardTitle className="text-lg text-[#24546B] font-semibold">{agent.name}</CardTitle>
+                    <CardDescription className="text-slate-600 mt-1 font-medium">{agent.description}</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between text-sm text-slate-500 mb-4">
                     <span>Last used: {agent.lastUsed}</span>
                     <div className="flex items-center gap-1">
                       <MessageSquare className="w-3 h-3" />
                       <span>{agent.conversations}</span>
                     </div>
                   </div>
-                  <div className="flex gap-2 mt-4">
-                    <Button size="sm" className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground">
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-gradient-to-r from-[#24546B] to-[#1e4a5f] hover:from-[#1e4a5f] hover:to-[#24546B] text-white shadow-md"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleAgentClick(agent.id)
+                      }}
+                    >
                       <MessageSquare className="w-3 h-3 mr-1" />
                       Chat
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-border bg-transparent"
+                      className={`border-slate-200 hover:bg-slate-50 ${isEditing ? "bg-[#24546B] text-white" : ""}`}
                       onClick={(e) => handleEditAgent(agent.id, e)}
                     >
-                      <Settings className="w-3 h-3" />
+                      {isEditing ? <X className="w-3 h-3" /> : <Edit3 className="w-3 h-3" />}
                     </Button>
                   </div>
                 </CardContent>
@@ -232,16 +323,19 @@ export default function AgentHub() {
 
         {/* Empty State */}
         {filteredAgents.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="w-8 h-8 text-muted-foreground" />
+          <div className="text-center py-16">
+            <div className="w-20 h-20 bg-gradient-to-br from-[#24546B]/10 to-[#1e4a5f]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Search className="w-10 h-10 text-[#24546B]" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">No agents found</h3>
-            <p className="text-muted-foreground mb-4">
-              Try adjusting your search or create a new agent to get started.
+            <h3 className="text-xl font-semibold text-[#24546B] mb-3">No agents found</h3>
+            <p className="text-slate-600 mb-6 max-w-md mx-auto">
+              Try adjusting your search or create a new agent to get started with your AI assistant collection.
             </p>
-            <Button onClick={handleCreateAgent} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              <Plus className="w-4 h-4 mr-2" />
+            <Button
+              onClick={handleCreateAgent}
+              className="bg-gradient-to-r from-[#24546B] to-[#1e4a5f] hover:from-[#1e4a5f] hover:to-[#24546B] text-white shadow-lg px-6 py-3"
+            >
+              <Plus className="w-5 h-5 mr-2" />
               Create Your First Agent
             </Button>
           </div>
@@ -250,18 +344,6 @@ export default function AgentHub() {
 
       {/* Chat Interface Overlay */}
       {isChatOpen && selectedAgentData && <ChatInterface agent={selectedAgentData} onClose={handleCloseChat} />}
-
-      {isManagementOpen && (
-        <AgentManagementDialog
-          agent={editingAgentData}
-          onSave={handleSaveAgent}
-          onDelete={editingAgent ? () => handleDeleteAgent(editingAgent) : undefined}
-          onClose={() => {
-            setIsManagementOpen(false)
-            setEditingAgent(null)
-          }}
-        />
-      )}
     </div>
   )
 }
